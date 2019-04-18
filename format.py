@@ -82,3 +82,4 @@ def get_visible_text():
 if __name__ == '__main__':
 	format_html()
 	get_visible_text()
+
