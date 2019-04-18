@@ -3,7 +3,12 @@ from sys import argv
 
 
 def format_html():
-	foldername = str(argv[1])
+	try:
+		foldername = str(argv[1])
+	except:
+		print('Ошибка чтения аргумента названия папки в командной строке - > python format.py "???"')
+		exit()
+		
 	print('Открытие файла...')
 	try:
 		with open('index.html', 'r', encoding='utf-8') as source:
