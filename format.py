@@ -1,7 +1,8 @@
 from bs4 import BeautifulSoup as Soup
-
+import re
 
 def format_html():
+	foldername = ''
 	print('Открытие файла...')
 	try:
 		with open('index.html', 'r', encoding='utf-8') as source:
@@ -10,7 +11,23 @@ def format_html():
 	except Exception as e:
 		print(f'***Ошибка открытия index.html: {e}***')
 		exit()
-	
+	soup = Soup(html, features="html.parser")
+	print('Поиск названия папки...')
+	find_foldername = soup.find_all('script')
+	for scrIndex in find_foldername:
+		if len(scrIndex.attrs):
+			for key, value in scrIndex.attrs.items():
+				if key == 'src':
+					if len(re.findall(r'/\w+/', value)):
+						regex = re.findall(r'/\w+/', value)
+						if len(regex[0]) == 17:
+							foldername = regex[0]
+							foldername = foldername.replace('/', '')
+							break
+	if len(foldername) < 15:
+		print('Найти название папки не удалось')
+	print(foldername)
+	print('ok')
 	print('Удаление тегов script...')
 	try:
 		soup = Soup(html, features="html.parser")
@@ -36,23 +53,39 @@ def format_html():
 				script['src'] = i
 				head.insert_after(script)
 				print(f'Вставлен <script type="text/javascript" src={i}')
-			nolist = ['n', 'N', 'т', 'Т']
-			print(f'Что дополнительно добавить в <head>? (n - для отмены):\n')
-			scripts_input = str(input())
-			if scripts_input in nolist:
+			lines = []
+			print(
+				'Что дополнительно добавить в <head>? БЕЗ ПУСТЫХ СТРОК В СЕРЕДИНЕ И ДВУМЯ ПУСТЫМИ В КОНЦЕ (ENTER - для отмены):')
+			while True:
+				scripts_input = input()
+				if scripts_input:
+					lines.append(scripts_input)
+				else:
+					break;
+			longstr = ''
+			for i in lines:
+				longstr += i
+			if not len(longstr):
 				print('Дополнительные скрипты добавлены не будут')
 			else:
-				soup_scripts = Soup(scripts_longstr)
-			# TODO Принимать многострочную str с разным колличеством скриптов. 1, 2  или 3, например
-			# Обрабатывать ее soup'ом и закидывать в новые теги
-			# Добавить эти теги в head
+				soup_scripts = Soup(longstr, features="html.parser")
+				scripts_list = soup_scripts.find_all('script')
+				for scrIndex in scripts_list:
+					if len(scrIndex.attrs):
+						script = soup.new_tag('script')
+						script['src'] = scrIndex['src']
+						script['async'] = None
+						head.insert_after(script)
+					elif len(scrIndex.string):
+						script = soup.new_tag('script')
+						script.string = scrIndex.string
+						head.insert_after(script)
 		except Exception as e:
 			print(f'***Ошибка вставки необходимых тегов: {e}***')
 	except:
 		print('Тег <title> для вставки в <head> не найден')
 	try:
 		body = soup.find('div', class_="ac_footer")
-		foldername = str(input('Введите название папки для скриптов: '))
 		# Список для добавления в <body>
 		to_body = [
 			f"content/{foldername}/js/jquery.plugin.min.js",
@@ -114,7 +147,36 @@ def get_visible_text():
 	with open('text.txt', 'w', encoding='utf-8') as out:
 		out.write(visible_text)
 
+def GScripts():
+	lines = []
+	print('Что дополнительно добавить в <head>? БЕЗ ПУСТЫХ СТРОК В СЕРЕДИНЕ И ДВУМЯ ПУСТЫМИ В КОНЦЕ (ENTER - для отмены):')
+	while True:
+		scripts_input = input()
+		if scripts_input:
+			lines.append(scripts_input)
+		else:
+			break;
+	longstr = ''
+	for i in lines:
+		longstr += i
+	if not len(longstr):
+		print('Дополнительные скрипты добавлены не будут')
+	else:
+		soup_scripts = Soup(longstr, features="html.parser")
+		print(type(soup_scripts))
+		scripts_list = soup_scripts.find_all('script')
+		for scrIndex in scripts_list:
+			if len(scrIndex.attrs):
+				script = soup.new_tag('script')
+				script['src'] = scrIndex['src']
+				script['async'] = None
+				head.insert_after(script)
+			elif len(scrIndex.string):
+				script = soup.new_tag('script')
+				script.string = scrIndex.string
+				head.insert_after(script)
+
 
 if __name__ == '__main__':
 	format_html()
-	get_visible_text()
+	#get_visible_text()
