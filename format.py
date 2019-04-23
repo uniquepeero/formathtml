@@ -64,7 +64,6 @@ def format_land():
 			print('Вставка необходимых тегов...')
 			try:
 				head = soup.find('title')
-
 				print('В <head>')
 				for i in to_head:
 					script = soup.new_tag('script')
@@ -145,7 +144,102 @@ def format_land():
 			print('*' * 50)
 
 def format_preland():
-	find_dir(q)
+	print('Какие скрипты добавить?\nБЕЗ ПУСТЫХ СТРОК В СЕРЕДИНЕ И ДВУМЯ ПУСТЫМИ В КОНЦЕ (ENTER - для отмены):')
+	lines = []
+	while True:
+		scripts_input = input()
+		if scripts_input:
+			lines.append(scripts_input)
+		else:
+			break;
+	longstr = ''''''
+	for i in lines:
+		longstr += i
+	del lines
+	for path in find_dir(q):
+		print(f'Открытие файла {path}...')
+		try:
+			with open(f'{path}', 'r', encoding='utf-8') as source:
+				html = source.read()
+			print('ok')
+		except Exception as e:
+			print(f'***Ошибка открытия index.html: {e}***')
+			exit()
+		soup = Soup(html, features="html.parser")
+		dtimecount = 0
+		deletedcount = 0
+		print('Удаляем скрипты...')
+		for s in soup.find_all("script"):
+			if 'src' in s.attrs.keys():
+				if s['src'] == 'content/shared/js/dr-dtime.min.js'\
+					or s['src'] == 'content/shared/js/jquery-1.12.4.min.js':
+					print(f"Найден {s['src']}")
+				else:
+					s.extract()
+					deletedcount += 1
+			elif 'dtime' in s.text:
+				dtimecount += 1
+			else:
+				s.extract()
+				deletedcount += 1
+		print(f'Найдено dtime_nums: {dtimecount} /// Удалено: {deletedcount}')
+		print('ok')
+		if soup.find('base'):
+			print('<base> уже существует')
+		else:
+			print('Вставляем <base> в head...')
+			base_tag = soup.new_tag('base')
+			base_tag['target'] = '_blank'
+			head = soup.find('head')
+			head.insert(1, base_tag)
+		print('ok')
+		print('Заменяем все href на {offer}')
+		for a in soup.find_all('a'):
+			if 'href' in a.attrs.keys():
+				if not a['href'] == 'http://ac-feedback.com/report_form/':
+					a['href'] = '{offer}'
+		print('ok')
+		print('Вставляем дополнительные теги...')
+		if not len(longstr):
+			print('Дополнительные скрипты не найдены')
+		else:
+			soup_scripts = Soup(longstr, features="html.parser")
+			scripts_list = soup_scripts.find_all('script')
+			head = soup.find('title')
+			for scrIndex in scripts_list:
+				try:
+					if len(scrIndex.attrs):
+						if 'src' and 'async' in scrIndex.attrs.keys():
+							script = soup.new_tag('script')
+							script['src'] = scrIndex['src']
+							script['async'] = None
+							head.insert_after(script)
+							print(f"Вставлен <script async src={scrIndex['src']}")
+						if len(scrIndex.string):
+							if 'window.location.href' in scrIndex.string:
+								script = soup.new_tag('script')
+								script['type'] = 'text/javascript'
+								script.string = scrIndex.string
+								body = soup.find('div', class_="ac_footer")
+								body.insert_after(script)
+					elif len(scrIndex.string):
+						script = soup.new_tag('script')
+						script.string = scrIndex.string
+						head.insert_after(script)
+				except:
+					pass
+		print('ok')
+		print('Запись в новый файл "index_formatted.html"...')
+		try:
+			html_f = soup.prettify("utf-8")
+			with open(f'{path}_formatted.html', 'wb') as formated:
+				formated.write(html_f)
+			print('ok')
+		except Exception as e:
+			print(f'***Ошибка записи в новый файл: {e}***')
+			exit()
+		print('*' * 50)
+
 
 def get_visible_text():
 	with open('index.html', 'r', encoding='utf-8') as file:
@@ -208,6 +302,8 @@ def find_dir(q):
 
 if __name__ == '__main__':
 	errors = 0
+	print('land - рядом со скриптом минимум 1 папка с гео, внутри которой минимум одна папка с сайтом (index.html)')
+	print('preland - рядом со скриптом папки с сайтами (index.html)')
 	q = input('land / preland ? - ')
 	q = q.lower()
 	if q == 'land':
